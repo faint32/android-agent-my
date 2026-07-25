@@ -33,6 +33,23 @@ def ascii_typeable(text: str) -> str:
     return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
 
 
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def strip_to_png_signature(raw: bytes) -> bytes:
+    """On multi-display devices (foldables), screencap prints a
+    "[Warning] Multiple displays were found..." line to stdout ahead of the
+    PNG data, corrupting naive reads. Trim anything before the PNG signature.
+    """
+    idx = raw.find(_PNG_SIGNATURE)
+    return raw[idx:] if idx > 0 else raw
+
+
+def capture_screencap_png(serial: str, timeout: float = 10) -> bytes:
+    raw = subprocess.check_output(["adb", "-s", serial, "exec-out", "screencap", "-p"], timeout=timeout)
+    return strip_to_png_signature(raw)
+
+
 _KEYCODE_RE = re.compile(r"^KEYCODE_[A-Z0-9_]+$")
 
 

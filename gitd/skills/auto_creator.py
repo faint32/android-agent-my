@@ -26,6 +26,7 @@ from xml.etree import ElementTree as ET
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from gitd.bots.common.adb import capture_screencap_png
 from gitd.bots.common.device import get_device, is_ios_ref
 
 log = logging.getLogger(__name__)
@@ -290,7 +291,7 @@ class AppExplorer:
     def _screenshot_bytes(self) -> bytes:
         if self.platform == "ios":
             return self.dev.take_screenshot()
-        return subprocess.check_output(["adb", "-s", self.dev.serial, "exec-out", "screencap", "-p"], timeout=10)
+        return capture_screencap_png(self.dev.serial, timeout=10)
 
     def _capture_state(self, depth: int) -> AppState | None:
         """Dump XML + screenshot, create AppState if new."""
