@@ -17,7 +17,7 @@ import subprocess
 import urllib.parse
 import urllib.request
 
-from gitd.bots.common.adb import Device
+from gitd.bots.common.adb import Device, capture_screencap_png
 from gitd.bots.common.device import get_device, is_ios_ref
 from gitd.bots.common.ios import remote_xpc_manual_recovery
 
@@ -251,7 +251,7 @@ def list_packages(device: str, *, include_system: bool = False) -> list[str]:
 def _raw_screenshot_bytes(device: str) -> bytes:
     if is_ios_ref(device):
         return get_device(device).take_screenshot()
-    return subprocess.check_output(["adb", "-s", device, "exec-out", "screencap", "-p"], timeout=10)
+    return capture_screencap_png(device, timeout=10)
 
 
 def screenshot(device: str, half_res: bool = True, quality: int = 50) -> dict:

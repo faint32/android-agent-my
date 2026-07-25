@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import base64
 import contextlib
-import fcntl
 import html
+import importlib
 import json
 import os
 import re
@@ -28,6 +28,8 @@ from pathlib import Path
 from typing import Any
 
 import requests
+
+fcntl = importlib.import_module("fcntl") if os.name != "nt" else None  # POSIX-only; WDA launch guard no-ops on Windows
 
 IOS_PREFIX = "ios:"
 
@@ -1285,7 +1287,8 @@ def _wda_launch_guard(wda_up):
         with contextlib.suppress(Exception):
             os.makedirs(os.path.dirname(_WDA_LAUNCH_LOCK_PATH), exist_ok=True)
             fh = open(_WDA_LAUNCH_LOCK_PATH, "w")  # noqa: SIM115
-            fcntl.flock(fh, fcntl.LOCK_EX)  # released on POST timeout, so no forever-block
+            if fcntl is not None:
+                fcntl.flock(fh, fcntl.LOCK_EX)  # released on POST timeout, so no forever-block
         with contextlib.suppress(Exception):
             if not wda_up():
                 _reap_stale_wda_builds()
@@ -1293,7 +1296,8 @@ def _wda_launch_guard(wda_up):
     finally:
         if fh is not None:
             with contextlib.suppress(Exception):
-                fcntl.flock(fh, fcntl.LOCK_UN)
+                if fcntl is not None:
+                    fcntl.flock(fh, fcntl.LOCK_UN)
                 fh.close()
 
 
