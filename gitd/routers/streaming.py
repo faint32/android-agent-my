@@ -201,7 +201,9 @@ def phone_stream(device: str = "", fps: int = 30, quality: int = 8, mode: str = 
         from PIL import Image
 
         try:
-            raw = strip_to_png_signature(subprocess.check_output(["adb"] + dev_args + ["exec-out", "screencap", "-p"], timeout=5))
+            raw = strip_to_png_signature(
+                subprocess.check_output(["adb"] + dev_args + ["exec-out", "screencap", "-p"], timeout=5)
+            )
             img = Image.open(_io.BytesIO(raw)).convert("RGB")
             w, h = img.size
             img = img.resize((w // 2, h // 2), Image.NEAREST)
@@ -289,7 +291,9 @@ def phone_stream(device: str = "", fps: int = 30, quality: int = 8, mode: str = 
         delay = max(0, 1.0 / min(fps, 10) - 0.5)
         while True:
             try:
-                raw = strip_to_png_signature(subprocess.check_output(["adb"] + dev_args + ["exec-out", "screencap", "-p"], timeout=6))
+                raw = strip_to_png_signature(
+                    subprocess.check_output(["adb"] + dev_args + ["exec-out", "screencap", "-p"], timeout=6)
+                )
                 img = Image.open(_io.BytesIO(raw)).convert("RGB")
                 img = img.resize((img.width // 2, img.height // 2), Image.NEAREST)
                 buf = _io.BytesIO()
