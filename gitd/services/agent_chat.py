@@ -82,23 +82,17 @@ PROVIDERS = {
         "label": "On-device (Gemma)",
         "models": ["gemma-3-1b-it", "gemma-2-2b-it", "gemma-4-e2b-q4km-gguf"],
     },
-    # vLLM slot — also used for any other OpenAI-compatible server (here: a
-    # local llama.cpp/llama-swap router on GITD_VLLM_BASE_URL). Model ids must
-    # match what the server reports at /v1/models or routing fails.
+    # vLLM — full-precision Gemma 4 served from the GPU box,
+    # routed via Mac SSH tunnel + adb reverse so the phone hits it as if it
+    # were on localhost. Same OpenAI-compatible shape as openrouter; we just
+    # point the client at config.vllm_base_url instead.
     "vllm": {
         "label": "vLLM (remote GPU)",
         "models": [
-            "Qwen3-8B-Q4_K_M",
-            "Qwen2.5-7B-Instruct-Q4_K_M",
-            "Qwen2.5-3B-Instruct-Q4_K_M",
-            "Qwen3-14B-Q4_K_M",
-            "Qwen3.5-9B-Q4_K_M",
-            "Meta-Llama-3.1-8B-Instruct-Q4_K_M",
-            "gemma-4-E4B-it-Q4_K_M",
-            "LFM2.5",
-            "GLM-4.7-Flash-Uncen-Hrt-NEO-CODE-MAX-IQ2_M",
-            "Qwen3.6-35B-A3B",
-            "Qwen3.6-35B-A3B-Uncensored",
+            "unsloth/gemma-4-E2B-it",
+            "unsloth/gemma-4-E2B-it-bnb-4bit",
+            "unsloth/gemma-4-E4B-it",
+            "unsloth/gemma-4-E4B-it-bnb-4bit",
         ],
     },
 }
