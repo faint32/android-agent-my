@@ -23,6 +23,7 @@
   <img src="https://img.shields.io/badge/MCP-62%20tools-6366f1" alt="62 MCP tools" />
   <img src="https://img.shields.io/badge/platforms-Android%20%2B%20iOS-a78bfa" alt="Android + iOS" />
   <img src="https://img.shields.io/badge/inference-cloud%20or%20on--device-22c55e" alt="cloud or on-device" />
+  <a href="https://mcptoplist.com/server/io.github.ghost-in-the-droid%2Fandroid-agent"><img src="https://mcptoplist.com/badge/io.github.ghost-in-the-droid%2Fandroid-agent.svg" alt="MCP Toplist: Top 1% of 95K" /></a>
 </p>
 
 ---
