@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ghost-in-the-droid"
-version = "1.5.0"
+version = "1.5.1"
 description = "Give any AI agent an Android body. Open-source phone automation via ADB — tap, swipe, type, run skills, scale across devices."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -33,6 +33,7 @@ dependencies = [
     "openai>=1.0",
     "mcp>=1.20",
     "langfuse>=2.0,<3.0",
+    "pillow>=12.3.0",
 ]
 
 [project.urls]
