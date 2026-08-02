@@ -190,18 +190,18 @@ def swipe(device: str, x1: int, y1: int, x2: int, y2: int, duration_ms: int = 50
 def type_text(device: str, text: str) -> str:
     """Type text into the currently focused input field.
     Tap an input field first to focus it. Spaces are supported.
-    Non-ASCII input is transliterated to the closest ASCII (adb input text is
-    ASCII-only); for full-fidelity emoji/CJK use type_unicode() instead."""
+    Android uses smart full-fidelity input for non-ASCII/CJK/emoji; ASCII uses
+    plain adb input text."""
     if is_ios_ref(device):
         get_device(device).type_text(text)
         return f"Typed: {text}"
-    from gitd.bots.common.adb import ascii_typeable, input_text_arg
+    if not text.isascii():
+        Device(device).type_unicode(text)
+        return f"Typed (unicode): {text}"
+    from gitd.bots.common.adb import input_text_arg
 
-    typed = ascii_typeable(text)
-    Device(device).adb("shell", "input", "text", input_text_arg(typed))
-    if typed != text:
-        return f"Typed (transliterated non-ASCII): {text!r} -> {typed!r}"
-    return f"Typed: {typed}"
+    Device(device).adb("shell", "input", "text", input_text_arg(text))
+    return f"Typed: {text}"
 
 
 @mcp.tool()

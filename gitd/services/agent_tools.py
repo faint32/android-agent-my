@@ -200,7 +200,7 @@ TOOLS = [
     },
     {
         "name": "type_text",
-        "description": "Type text into the currently focused input field.",
+        "description": "Type text into the currently focused input field. Supports ASCII and non-ASCII/CJK via smart Android fallbacks.",
         "input_schema": {
             "type": "object",
             "properties": {"device": {"type": "string"}, "text": {"type": "string"}},
@@ -1140,19 +1140,20 @@ def _execute_tool_inner(name: str, args: dict) -> str:
             get_device(device).swipe(args["x1"], args["y1"], args["x2"], args["y2"], ms=args.get("duration_ms", 500))
             return f"Swiped ({args['x1']},{args['y1']}) -> ({args['x2']},{args['y2']})"
         elif name == "type_text":
+            text = args["text"]
             if is_ios_ref(device):
-                get_device(device).type_text(args["text"])
-                return f"Typed: {args['text']}"
-            # `adb input text` is ASCII-only — one non-ASCII char blanks the whole
-            # field. Transliterate to the closest ASCII so accented input still
-            # lands (use type_unicode for full-fidelity emoji/CJK).
-            from gitd.bots.common.adb import ascii_typeable, input_text_arg
+                get_device(device).type_text(text)
+                return f"Typed: {text}"
+            # Prefer full-fidelity smart Unicode input for CJK/emoji/non-ASCII.
+            # Direct `adb input text` works on some emulators; Device.type_unicode
+            # falls back through ADBKeyboard and clipboard where needed.
+            if not text.isascii():
+                Device(device).type_unicode(text)
+                return f"Typed (unicode): {text}"
+            from gitd.bots.common.adb import input_text_arg
 
-            typed = ascii_typeable(args["text"])
-            Device(device).adb("shell", "input", "text", input_text_arg(typed))
-            if typed != args["text"]:
-                return f"Typed (transliterated non-ASCII): {args['text']!r} -> {typed!r}"
-            return f"Typed: {typed}"
+            Device(device).adb("shell", "input", "text", input_text_arg(text))
+            return f"Typed: {text}"
         elif name == "type_unicode":
             if is_ios_ref(device):
                 get_device(device).type_text(args["text"])

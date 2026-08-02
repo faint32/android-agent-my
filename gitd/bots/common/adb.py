@@ -160,12 +160,20 @@ class Device:
 
     def _run(self, args, timeout) -> subprocess.CompletedProcess:
         """Invoke adb once. Raises ADBError if adb is missing or the call times
-        out — both are hard failures no caller can recover from as a string."""
+        out — both are hard failures no caller can recover from as a string.
+
+        Always decode adb stdout/stderr as UTF-8 with replacement. On Windows,
+        ``text=True`` without an explicit encoding uses the active ANSI code page
+        (often GBK on Chinese systems), which can crash on UTF-8 UIAutomator or
+        app output before callers get a chance to handle the result.
+        """
         try:
             return subprocess.run(
                 ["adb", "-s", self.serial, *args],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=timeout,
             )
         except FileNotFoundError as e:
@@ -257,30 +265,71 @@ class Device:
         )
         time.sleep(delay)
 
-    # ── Unicode text input (ADBKeyboard) ───────────────────────────────────
+    # ── Unicode text input ──────────────────────────────────────────────────
 
     def type_unicode(self, text: str, delay=0.3):
-        """Type text including emoji/unicode via ADBKeyboard broadcast.
+        """Type text including emoji/unicode into the focused field.
 
-        Requires ADBKeyboard APK installed on device.
-        Flow: enable IME → set IME → broadcast text → restore Gboard.
+        Prefer the simplest path that works on the current Android target:
+        1. direct ``adb shell input text`` (works on some emulators/MuMu for CJK)
+        2. ADBKeyboard broadcast when the IME can be enabled/switched
+        3. clipboard paste for devices with ``cmd clipboard`` support
+
+        Older Ghost versions assumed ADBKeyboard was always switchable. Some
+        emulator ROMs disable ``ime enable`` / ``ime set`` for security reasons,
+        while still accepting direct Unicode through ``input text``. This smart
+        fallback keeps Chinese input usable in those environments.
         """
+        errors: list[str] = []
+
+        # 1) Direct input. Keep the argument unquoted here: subprocess passes it
+        # to adb as one host-side argument, and on several emulator builds this
+        # is the only CJK-capable path that works without changing IMEs.
+        direct = self.adb_soft("shell", "input", "text", text)
+        if direct.ok:
+            time.sleep(delay)
+            return
+        errors.append(f"direct input failed: {direct.stderr or direct.stdout or direct.returncode}")
+
+        # 2) ADBKeyboard. Preserve the original IME when possible and restore it
+        # if switching succeeds. All steps are soft because many emulator ROMs
+        # intentionally block IME mutation from shell.
         adb_ime = "com.android.adbkeyboard/.AdbIME"
-        gboard = "com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME"
+        original_ime = self.adb_soft("shell", "settings", "get", "secure", "default_input_method").stdout.strip()
+        enable = self.adb_soft("shell", "ime", "enable", adb_ime)
+        switch = self.adb_soft("shell", "ime", "set", adb_ime)
+        if enable.ok and switch.ok:
+            time.sleep(0.2)
+            escaped = text.replace('"', '\\"')
+            sent = self.adb_soft("shell", "am", "broadcast", "-a", "ADB_INPUT_TEXT", "--es", "msg", escaped)
+            time.sleep(delay)
+            if original_ime and original_ime not in ("null", adb_ime):
+                self.adb_soft("shell", "ime", "set", original_ime)
+            if sent.ok:
+                return
+            errors.append(f"ADBKeyboard broadcast failed: {sent.stderr or sent.stdout or sent.returncode}")
+        else:
+            errors.append(
+                "ADBKeyboard unavailable: "
+                f"enable={enable.stderr or enable.stdout or enable.returncode}; "
+                f"set={switch.stderr or switch.stdout or switch.returncode}"
+            )
 
-        # Enable and switch to ADBKeyboard
-        self.adb("shell", "ime", "enable", adb_ime)
-        self.adb("shell", "ime", "set", adb_ime)
-        time.sleep(0.2)
+        # 3) Clipboard paste. Android variants disagree on set vs set-text, so
+        # try both, then press PASTE (KEYCODE_PASTE = 279).
+        clip = self.adb_soft("shell", "cmd", "clipboard", "set-text", text)
+        if not clip.ok:
+            clip = self.adb_soft("shell", "cmd", "clipboard", "set", text)
+        if clip.ok:
+            pasted = self.adb_soft("shell", "input", "keyevent", "279")
+            if pasted.ok:
+                time.sleep(delay)
+                return
+            errors.append(f"clipboard paste key failed: {pasted.stderr or pasted.stdout or pasted.returncode}")
+        else:
+            errors.append(f"clipboard unavailable: {clip.stderr or clip.stdout or clip.returncode}")
 
-        # Broadcast text (handles emoji, CJK, accented chars)
-        escaped = text.replace('"', '\\"')
-        self.adb("shell", "am", "broadcast", "-a", "ADB_INPUT_TEXT", "--es", "msg", f'"{escaped}"')
-        time.sleep(delay)
-
-        # Restore original IME immediately (stealth: minimize time on ADBKeyboard)
-        self.adb("shell", "ime", "set", gboard)
-        self.adb("shell", "ime", "disable", adb_ime)
+        raise ADBError(("shell", "input", "unicode", text), 1, "; ".join(errors))
 
     # ── Notifications ──────────────────────────────────────────────────────
 
